@@ -30,6 +30,3 @@ app_settings.auto_refresh_cron: Optional schedule to auto-refresh data.
 app_settings.created_at: Timestamp when the record was created.
 app_settings.updated_at: Timestamp when the record was last updated.
 
-Ledger API: Off-chain accounting service for wallets, immutable ledger entries, transfers, and balance tracking.
-Prisma: Type-safe ORM and migration tooling for PostgreSQL; enables schema evolution and generated queries.
-HashiCorp Vault: Centralized secret management for API keys, DB creds, and encryption keys with audited access.

@@ -1,4 +1,5 @@
-use axum::Router;
+use axum::{response::IntoResponse, routing::get, Extension, Router};
+use crate::http::ApiContext;
 
 pub fn products_router() -> Router {
     Router::new().route("/products", get(list_products))
@@ -9,6 +10,6 @@ pub fn products_router() -> Router {
     ) */
 }
 
-async fn products_type(Extension(_ctx): Extension<ApiContext>) -> impl IntoResponse {
+async fn list_products(Extension(_ctx): Extension<ApiContext>) -> impl IntoResponse {
     "ok"
 }

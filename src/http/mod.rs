@@ -66,6 +66,6 @@ fn api_router() -> Router {
         "/api/v1",
         Router::new()
             .merge(inventory::inventory_router())
-            .merge(orders::orders_router()),
+/*             .merge(orders::orders_router()), */
     )
 }
