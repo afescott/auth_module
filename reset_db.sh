@@ -12,4 +12,4 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO exchange_user;
 EOF
 
 echo "Database reset complete!"
-echo "Now run: cargo run" 
+echo "Now run: cargo run"

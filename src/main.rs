@@ -4,7 +4,9 @@ use clap::Parser;
 use sqlx::postgres::PgPoolOptions;
 
 mod args;
+mod auth;
 mod http;
+pub mod misc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

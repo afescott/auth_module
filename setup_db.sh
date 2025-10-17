@@ -12,4 +12,4 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO exchange_user;
 EOF
 
 echo "Database setup complete!"
-echo "Database URL: postgres://exchange_user:exchange_password@localhost/exchange_api" 
+echo "Database URL: postgres://exchange_user:exchange_password@localhost/exchange_api"
