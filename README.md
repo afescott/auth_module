@@ -1,3 +1,5 @@
 # auth_module
 
-JKWS 
+JKWS
+
+Verify git tracking is working
