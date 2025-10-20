@@ -1,7 +1,7 @@
 -- 0003_orders.sql
 CREATE TABLE orders (
 	id                              BIGSERIAL PRIMARY KEY,
-	merchant_id                     BIGINT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+	merchant_id                     UUID NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
 	shopify_order_id                BIGINT NOT NULL,
 	name                            TEXT,
 	processed_at                    TIMESTAMPTZ,
