@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use axum::{Extension, Router};
-use serde::{Deserialize, Serialize};
+use axum::{response::Redirect, routing::get, Extension, Router};
 /* use sqlx::prelude::FromRow; */
 use sqlx::PgPool;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
-use uuid::Uuid;
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 
 use crate::auth::jkws::AuthService;
 use crate::Args;
@@ -16,6 +14,8 @@ mod inventory;
 mod orders;
 mod products;
 mod types;
+
+pub use types::*;
 
 #[derive(Clone)]
 pub struct ApiContext {
@@ -64,11 +64,17 @@ pub async fn serve(config: Args, db: PgPool) -> anyhow::Result<()> {
 
 fn api_router() -> Router {
     // This is the order that the modules were authored in.
-    Router::new().nest(
-        "/api/v1",
-        Router::new()
-            .merge(inventory::inventory_router())
-            .merge(orders::orders_router())
-            .merge(products::products_router()),
-    )
+    Router::new()
+        // Redirect root to docs
+        .route("/", get(|| async { Redirect::permanent("/docs/") }))
+        // Serve static documentation files
+        .nest_service("/docs", ServeDir::new("docs"))
+        // API routes
+        .nest(
+            "/api/v1",
+            Router::new()
+                .merge(inventory::inventory_router())
+                .merge(orders::orders_router())
+                .merge(products::products_router()),
+        )
 }

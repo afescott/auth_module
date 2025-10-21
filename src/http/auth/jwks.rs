@@ -1,5 +1,4 @@
 use axum::{extract::Extension, routing::get, Json, Router};
-use serde::{Deserialize, Serialize};
 
 use crate::{auth::jkws::Jwks, http::types::AppError};
 
@@ -29,7 +28,7 @@ async fn get_jwks(
     let jwks = context
         .auth_service
         .generate_jwks()
-        .map_err(|_| AppError::InternalServerError)?;
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok(Json(jwks))
 }

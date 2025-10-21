@@ -4,350 +4,216 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-// Removed validator dependency - using thiserror instead
+use thiserror::Error;
+use uuid::Uuid;
 
-/// Standard API response wrapper for successful operations
-#[derive(Debug, Serialize)]
-pub struct ApiResponse<T> {
-    pub success: bool,
-    pub data: T,
-    pub message: Option<String>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-}
-
-impl<T> ApiResponse<T> {
-    pub fn success(data: T) -> Self {
-        Self {
-            success: true,
-            data,
-            message: None,
-            timestamp: chrono::Utc::now(),
-        }
-    }
-
-    pub fn success_with_message(data: T, message: String) -> Self {
-        Self {
-            success: true,
-            data,
-            message: Some(message),
-            timestamp: chrono::Utc::now(),
-        }
-    }
-}
-
-/// Standard API error response
-#[derive(Debug, Serialize)]
-pub struct ApiError {
-    pub success: bool,
-    pub error: ErrorDetails,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ErrorDetails {
-    pub code: String,
-    pub message: String,
-    pub details: Option<HashMap<String, serde_json::Value>>,
-}
-
-impl ApiError {
-    pub fn new(code: String, message: String) -> Self {
-        Self {
-            success: false,
-            error: ErrorDetails {
-                code,
-                message,
-                details: None,
-            },
-            timestamp: chrono::Utc::now(),
-        }
-    }
-
-    pub fn with_details(
-        code: String,
-        message: String,
-        details: HashMap<String, serde_json::Value>,
-    ) -> Self {
-        Self {
-            success: false,
-            error: ErrorDetails {
-                code,
-                message,
-                details: Some(details),
-            },
-            timestamp: chrono::Utc::now(),
-        }
-    }
-}
-
-/// Simple validation error type
-#[derive(Debug, thiserror::Error)]
-pub enum ValidationError {
-    #[error("Field '{field}' is invalid: {message}")]
-    FieldError { field: String, message: String },
-    #[error("Validation failed: {message}")]
-    General { message: String },
-    #[error("Invalid email format")]
-    InvalidEmail,
-    #[error(
-        "Password does not meet requirements: must be at least 8 characters with uppercase, lowercase, digit, and special character"
-    )]
-    WeakPassword,
-}
-
-/// Application error types for exchange API
-#[derive(Debug, thiserror::Error)]
+#[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Validation failed: {0}")]
-    Validation(#[from] ValidationError),
-
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
-
-    #[error("User not found")]
-    UserNotFound,
-
-    #[error("User already exists")]
-    UserAlreadyExists,
-
-    #[error("Invalid credentials")]
-    InvalidCredentials,
-
-    #[error("Invalid token")]
-    InvalidToken,
-
-    #[error("Token expired")]
-    TokenExpired,
-
-    #[error("Insufficient permissions")]
-    InsufficientPermissions,
-
-    #[error("KYC verification required")]
-    KYCVerificationRequired,
-
-    #[error("Account locked")]
-    AccountLocked,
-
-    #[error("Account suspended")]
-    AccountSuspended,
-
-    #[error("Rate limit exceeded")]
-    RateLimitExceeded,
-
-    #[error("Invalid 2FA code")]
-    Invalid2FACode,
-
-    #[error("2FA not enabled")]
-    TwoFactorNotEnabled,
-
-    #[error("Session expired")]
-    SessionExpired,
-
-    #[error("Order not found")]
-    OrderNotFound,
-
-    #[error("Insufficient balance")]
-    InsufficientBalance,
-
-    #[error("Invalid order type")]
-    InvalidOrderType,
-
-    #[error("Invalid order status")]
-    InvalidOrderStatus,
-
-    #[error("Market not found")]
-    MarketNotFound,
-
-    #[error("Trading suspended")]
-    TradingSuspended,
-
-    #[error("Wallet not found")]
-    WalletNotFound,
-
-    #[error("Invalid currency")]
-    InvalidCurrency,
-
-    #[error("Withdrawal limit exceeded")]
-    WithdrawalLimitExceeded,
-
-    #[error("Deposit limit exceeded")]
-    DepositLimitExceeded,
-
-    #[error("Internal server error")]
-    InternalServerError,
-
-    #[error("External service error: {0}")]
-    ExternalService(String),
-
-    #[error("Configuration error: {0}")]
-    Configuration(String),
-}
-
-impl AppError {
-    pub fn error_code(&self) -> String {
-        match self {
-            AppError::Validation(_) => "VALIDATION_ERROR".to_string(),
-            AppError::Database(_) => "DATABASE_ERROR".to_string(),
-            AppError::UserNotFound => "USER_NOT_FOUND".to_string(),
-            AppError::UserAlreadyExists => "USER_ALREADY_EXISTS".to_string(),
-            AppError::InvalidCredentials => "INVALID_CREDENTIALS".to_string(),
-            AppError::InvalidToken => "INVALID_TOKEN".to_string(),
-            AppError::TokenExpired => "TOKEN_EXPIRED".to_string(),
-            AppError::InsufficientPermissions => "INSUFFICIENT_PERMISSIONS".to_string(),
-            AppError::KYCVerificationRequired => "KYC_VERIFICATION_REQUIRED".to_string(),
-            AppError::AccountLocked => "ACCOUNT_LOCKED".to_string(),
-            AppError::AccountSuspended => "ACCOUNT_SUSPENDED".to_string(),
-            AppError::RateLimitExceeded => "RATE_LIMIT_EXCEEDED".to_string(),
-            AppError::Invalid2FACode => "INVALID_2FA_CODE".to_string(),
-            AppError::TwoFactorNotEnabled => "2FA_NOT_ENABLED".to_string(),
-            AppError::SessionExpired => "SESSION_EXPIRED".to_string(),
-            AppError::OrderNotFound => "ORDER_NOT_FOUND".to_string(),
-            AppError::InsufficientBalance => "INSUFFICIENT_BALANCE".to_string(),
-            AppError::InvalidOrderType => "INVALID_ORDER_TYPE".to_string(),
-            AppError::InvalidOrderStatus => "INVALID_ORDER_STATUS".to_string(),
-            AppError::MarketNotFound => "MARKET_NOT_FOUND".to_string(),
-            AppError::TradingSuspended => "TRADING_SUSPENDED".to_string(),
-            AppError::WalletNotFound => "WALLET_NOT_FOUND".to_string(),
-            AppError::InvalidCurrency => "INVALID_CURRENCY".to_string(),
-            AppError::WithdrawalLimitExceeded => "WITHDRAWAL_LIMIT_EXCEEDED".to_string(),
-            AppError::DepositLimitExceeded => "DEPOSIT_LIMIT_EXCEEDED".to_string(),
-            AppError::InternalServerError => "INTERNAL_SERVER_ERROR".to_string(),
-            AppError::ExternalService(_) => "EXTERNAL_SERVICE_ERROR".to_string(),
-            AppError::Configuration(_) => "CONFIGURATION_ERROR".to_string(),
-        }
-    }
-
-    pub fn status_code(&self) -> StatusCode {
-        match self {
-            AppError::Validation(_) => StatusCode::BAD_REQUEST,
-            AppError::UserNotFound
-            | AppError::OrderNotFound
-            | AppError::MarketNotFound
-            | AppError::WalletNotFound => StatusCode::NOT_FOUND,
-            AppError::InvalidCredentials
-            | AppError::InvalidToken
-            | AppError::TokenExpired
-            | AppError::SessionExpired => StatusCode::UNAUTHORIZED,
-            AppError::InsufficientPermissions
-            | AppError::KYCVerificationRequired
-            | AppError::AccountLocked
-            | AppError::AccountSuspended => StatusCode::FORBIDDEN,
-            AppError::UserAlreadyExists => StatusCode::CONFLICT,
-            AppError::InvalidOrderType
-            | AppError::InvalidOrderStatus
-            | AppError::InvalidCurrency => StatusCode::BAD_REQUEST,
-            AppError::InsufficientBalance
-            | AppError::WithdrawalLimitExceeded
-            | AppError::DepositLimitExceeded => StatusCode::BAD_REQUEST,
-            AppError::TradingSuspended => StatusCode::SERVICE_UNAVAILABLE,
-            AppError::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
-            AppError::Invalid2FACode | AppError::TwoFactorNotEnabled => StatusCode::BAD_REQUEST,
-            AppError::Database(_)
-            | AppError::InternalServerError
-            | AppError::ExternalService(_)
-            | AppError::Configuration(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
-
-    pub fn to_api_error(&self) -> ApiError {
-        match self {
-            AppError::Validation(error) => {
-                let mut details = HashMap::new();
-                match error {
-                    ValidationError::FieldError { field, message } => {
-                        let field_errors = HashMap::from([(field.clone(), vec![message.clone()])]);
-                        details.insert(
-                            "field_errors".to_string(),
-                            serde_json::to_value(field_errors).unwrap(),
-                        );
-                        ApiError::with_details(self.error_code(), "Validation failed".to_string(), details)
-                    }
-                    ValidationError::General { message } => {
-                        ApiError::new(self.error_code(), message.clone())
-                    }
-                    ValidationError::InvalidEmail => {
-                        ApiError::new(self.error_code(), "Invalid email format".to_string())
-                    }
-                    ValidationError::WeakPassword => {
-                        ApiError::new(self.error_code(), "Password does not meet requirements: must be at least 8 characters with uppercase, lowercase, digit, and special character".to_string())
-                    }
-                }
-            }
-            _ => ApiError::new(self.error_code(), self.to_string()),
-        }
-    }
+    #[error("Validation error: {0}")]
+    Validation(String),
+    #[error("Not found")]
+    NotFound,
+    #[error("Unauthorized")]
+    Unauthorized,
+    #[error("Internal server error: {0}")]
+    Internal(String),
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let status = self.status_code();
-        let api_error = self.to_api_error();
-        (status, Json(api_error)).into_response()
+        let (status, error_message, message) = match &self {
+            AppError::Database(e) => {
+                // Log the full error for debugging
+                eprintln!("Database error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Database error",
+                    format!("Database error: {}", e)
+                )
+            },
+            AppError::Validation(ref msg) => (StatusCode::BAD_REQUEST, "Validation error", msg.clone()),
+            AppError::NotFound => (StatusCode::NOT_FOUND, "Resource not found", "Resource not found".to_string()),
+            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized", "Unauthorized".to_string()),
+            AppError::Internal(ref msg) => {
+                eprintln!("Internal error: {}", msg);
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error", msg.clone())
+            },
+        };
+
+        let body = Json(serde_json::json!({
+            "error": error_message,
+            "message": message
+        }));
+
+        (status, body).into_response()
     }
 }
 
-/// Pagination metadata
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PaginationMeta {
-    pub page: u32,
-    pub per_page: u32,
-    pub total: u64,
-    pub total_pages: u32,
-    pub has_next: bool,
-    pub has_prev: bool,
+pub type AppResult<T> = Result<Json<T>, AppError>;
+
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
+pub struct Product {
+    pub id: Uuid,
+    pub merchant_id: Uuid,
+    pub shopify_product_id: i64,
+    pub title: Option<String>,
+    pub product_type: Option<String>,
+    pub status: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-/// Paginated response wrapper
-#[derive(Debug, Serialize)]
-pub struct PaginatedResponse<T> {
-    pub success: bool,
-    pub data: Vec<T>,
-    pub pagination: PaginationMeta,
-    pub message: Option<String>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
+pub struct Variant {
+    pub id: Uuid,
+    pub merchant_id: Uuid,
+    pub shopify_variant_id: i64,
+    pub shopify_product_id: i64,
+    pub sku: Option<String>,
+    pub title: Option<String>,
+    pub barcode: Option<String>,
+    pub weight: Option<f64>,
+    pub weight_unit: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-impl<T> PaginatedResponse<T> {
-    pub fn new(data: Vec<T>, pagination: PaginationMeta) -> Self {
-        Self {
-            success: true,
-            data,
-            pagination,
-            message: None,
-            timestamp: chrono::Utc::now(),
-        }
-    }
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ProductWithVariants {
+    #[serde(flatten)]
+    pub product: Product,
+    pub variants: Vec<Variant>,
+    pub variant_count: i64,
 }
 
-/// Empty response for operations that don't return data
-#[derive(Debug, Serialize)]
-pub struct EmptyResponse {
-    pub success: bool,
-    pub message: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+#[derive(Deserialize)]
+pub struct ListProductsParams {
+    pub merchant_id: Uuid,
+    pub product_type: Option<String>,
+    pub status: Option<String>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
 }
 
-impl EmptyResponse {
-    pub fn success(message: String) -> Self {
-        Self {
-            success: true,
-            message,
-            timestamp: chrono::Utc::now(),
-        }
-    }
+#[derive(Deserialize)]
+pub struct CreateProductRequest {
+    pub merchant_id: Uuid,
+    pub shopify_product_id: i64,
+    pub title: Option<String>,
+    pub product_type: Option<String>,
+    pub status: Option<String>,
 }
 
-/// Helper trait for converting results to API responses
-pub trait IntoApiResponse<T> {
-    fn into_api_response(self) -> Result<Json<ApiResponse<T>>, AppError>;
+#[derive(Deserialize)]
+pub struct UpdateProductRequest {
+    pub title: Option<String>,
+    pub product_type: Option<String>,
+    pub status: Option<String>,
 }
 
-impl<T> IntoApiResponse<T> for Result<T, AppError> {
-    fn into_api_response(self) -> Result<Json<ApiResponse<T>>, AppError> {
-        match self {
-            Ok(data) => Ok(Json(ApiResponse::success(data))),
-            Err(error) => Err(error),
-        }
-    }
+#[derive(Serialize)]
+pub struct ProductListResponse {
+    pub products: Vec<ProductWithVariants>,
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+}
+
+// Orders
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
+pub struct Order {
+    pub id: i64,
+    pub merchant_id: Uuid,
+    pub shopify_order_id: i64,
+    pub name: Option<String>,
+    pub processed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub currency: Option<String>,
+    pub subtotal_price: Option<rust_decimal::Decimal>,
+    pub total_price: Option<rust_decimal::Decimal>,
+    pub total_discounts: Option<rust_decimal::Decimal>,
+    pub total_shipping_price_set_amount: Option<rust_decimal::Decimal>,
+    pub total_tax: Option<rust_decimal::Decimal>,
+    pub financial_status: Option<String>,
+    pub cancelled_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+pub struct ListOrdersParams {
+    pub merchant_id: Uuid,
+    pub financial_status: Option<String>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateOrderRequest {
+    pub merchant_id: Uuid,
+    pub shopify_order_id: i64,
+    pub name: Option<String>,
+    pub processed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub currency: Option<String>,
+    pub subtotal_price: Option<rust_decimal::Decimal>,
+    pub total_price: Option<rust_decimal::Decimal>,
+    pub total_discounts: Option<rust_decimal::Decimal>,
+    pub total_shipping_price_set_amount: Option<rust_decimal::Decimal>,
+    pub total_tax: Option<rust_decimal::Decimal>,
+    pub financial_status: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateOrderRequest {
+    pub name: Option<String>,
+    pub financial_status: Option<String>,
+    pub cancelled_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Serialize)]
+pub struct OrderListResponse {
+    pub orders: Vec<Order>,
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+}
+
+// Inventory Items
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
+pub struct InventoryItem {
+    pub id: Uuid,
+    pub merchant_id: Uuid,
+    pub shopify_inventory_item_id: i64,
+    pub shopify_variant_id: Option<i64>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+pub struct ListInventoryItemsParams {
+    pub merchant_id: Uuid,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateInventoryItemRequest {
+    pub merchant_id: Uuid,
+    pub shopify_inventory_item_id: i64,
+    pub shopify_variant_id: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateInventoryItemRequest {
+    pub shopify_variant_id: Option<i64>,
+}
+
+#[derive(Serialize)]
+pub struct InventoryItemListResponse {
+    pub items: Vec<InventoryItem>,
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
 }
