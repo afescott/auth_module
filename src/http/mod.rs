@@ -14,6 +14,7 @@ mod inventory;
 mod orders;
 mod products;
 mod types;
+mod users;
 
 pub use types::*;
 
@@ -76,6 +77,7 @@ fn api_router() -> Router {
                 .merge(auth::auth_router())
                 .merge(inventory::inventory_router())
                 .merge(orders::orders_router())
-                .merge(products::products_router()),
+                .merge(products::products_router())
+                .merge(users::users_router()),
         )
 }

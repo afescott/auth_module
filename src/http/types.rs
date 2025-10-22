@@ -281,3 +281,55 @@ impl<T> ApiResponse<T> {
         }
     }
 }
+
+// User Management Types
+#[derive(Serialize, sqlx::FromRow)]
+pub struct UserResponse {
+    pub id: Uuid,
+    pub merchant_id: Uuid,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub role: String,
+    pub shopify_user_id: Option<i64>,
+    pub last_login_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub is_active: bool,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+pub struct ListUsersParams {
+    pub merchant_id: Uuid,
+    pub role: Option<String>,  // Filter by role
+    pub is_active: Option<bool>,  // Filter by active status
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateUserRequest {
+    pub merchant_id: Uuid,
+    pub email: String,
+    pub password: Option<String>,  // Optional for OAuth-only users
+    pub display_name: Option<String>,
+    // Note: role is NOT accepted - always creates 'viewer'
+    // Admin/Manager roles must be set via SQL scripts
+    pub shopify_user_id: Option<i64>,
+    pub is_active: Option<bool>,  // Defaults to true
+}
+
+#[derive(Deserialize)]
+pub struct UpdateUserRequest {
+    pub display_name: Option<String>,
+    pub password: Option<String>,  // To change password
+    // Note: role and is_active changes NOT allowed via API
+    // Must use SQL scripts to change roles or deactivate users
+}
+
+#[derive(Serialize)]
+pub struct UserListResponse {
+    pub users: Vec<UserResponse>,
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+}

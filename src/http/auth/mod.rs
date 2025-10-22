@@ -1,5 +1,6 @@
 mod jwks;
 mod login;
+mod users;
 
 use axum::Router;
 

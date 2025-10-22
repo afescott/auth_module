@@ -4,6 +4,12 @@ info:
   description: |
     API for managing products, orders, and inventory for Shopify merchants.
     
+    **Authentication:**
+    - Use `POST /login` to obtain JWT tokens
+    - Include `Authorization: Bearer <access_token>` header in protected endpoints
+    - Access tokens expire in 15 minutes
+    - Refresh tokens expire in 30 days
+    
     **Prerequisites:**
     - All products require a valid `merchant_id` that exists in the `merchants` table
     - Use the test merchant: `123e4567-e89b-12d3-a456-426614174001` (Test Shop)
@@ -21,6 +27,10 @@ servers:
     description: Local development server
 
 tags:
+  - name: Authentication
+    description: User authentication and token management
+  - name: Users
+    description: User management endpoints (viewer accounts only)
   - name: Products
     description: Product management endpoints
   - name: Orders
@@ -29,6 +39,442 @@ tags:
     description: Inventory item management endpoints
 
 paths:
+  /login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with email and password to obtain JWT tokens
+      operationId: login
+      security: []  # Public endpoint - no auth required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                  example: "admin@test-shop.com"
+                password:
+                  type: string
+                  format: password
+                  description: User's password
+                  example: "admin123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Login successful"
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                        description: JWT access token (expires in 15 minutes)
+                        example: "eyJhbGciOiJSUzI1NiIsImtpZCI6ImV4Y2hhbmdlX2FwaV9rZXlfMSIsInR5cCI6IkpXVCJ9..."
+                      refresh_token:
+                        type: string
+                        description: JWT refresh token (expires in 30 days)
+                        example: "eyJhbGciOiJSUzI1NiIsImtpZCI6ImV4Y2hhbmdlX2FwaV9rZXlfMSIsInR5cCI6IkpXVCJ9..."
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                            example: "a1111111-e89b-12d3-a456-426614174001"
+                          email:
+                            type: string
+                            format: email
+                            example: "admin@test-shop.com"
+                          display_name:
+                            type: string
+                            nullable: true
+                            example: "Admin User"
+                          role:
+                            type: string
+                            enum: [admin, manager, viewer]
+                            description: |
+                              User role:
+                              - admin: Full control (scopes: Viewer, Manager, Admin)
+                              - manager: Edit products/orders (scopes: Viewer, Manager)
+                              - viewer: Read-only access (scope: Viewer)
+                            example: "admin"
+        '400':
+          description: Bad request - Invalid email format or missing fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Invalid credentials or inactive user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid credentials"
+                  message:
+                    type: string
+                    example: "Invalid email or password"
+
+  /jwks:
+    get:
+      tags:
+        - Authentication
+      summary: Get JSON Web Key Set
+      description: |
+        Returns the public keys used to verify JWT token signatures.
+        Use this endpoint to validate JWT tokens issued by the API.
+      operationId: getJwks
+      security: []  # Public endpoint - no auth required
+      responses:
+        '200':
+          description: JWKS retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kty:
+                          type: string
+                          example: "RSA"
+                          description: Key type
+                        use:
+                          type: string
+                          example: "sig"
+                          description: Public key use (signature)
+                        kid:
+                          type: string
+                          example: "exchange_api_key_1"
+                          description: Key ID
+                        alg:
+                          type: string
+                          example: "RS256"
+                          description: Algorithm
+                        n:
+                          type: string
+                          description: RSA modulus (base64url encoded)
+                        e:
+                          type: string
+                          example: "AQAB"
+                          description: RSA exponent (base64url encoded)
+              example:
+                keys:
+                  - kty: "RSA"
+                    use: "sig"
+                    kid: "exchange_api_key_1"
+                    alg: "RS256"
+                    n: "xGOr-H7A-jq8wQ..."
+                    e: "AQAB"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: |
+        Retrieve a paginated list of users for a specific merchant.
+        Note: Password hashes are never returned for security.
+      operationId: listUsers
+      parameters:
+        - name: merchant_id
+          in: query
+          required: true
+          description: UUID of the merchant
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174001"
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of users to return (max 100)
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          description: Number of users to skip for pagination
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResponse'
+                  total:
+                    type: integer
+                    format: int64
+                    example: 10
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      description: |
+        Create a new user account with **viewer role only**.
+        
+        **Security Note:**
+        - API can only create viewer accounts
+        - Admin/Manager accounts must be created via SQL scripts
+        - This prevents privilege escalation attacks
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - merchant_id
+                - email
+              properties:
+                merchant_id:
+                  type: string
+                  format: uuid
+                  description: UUID of the merchant
+                  example: "123e4567-e89b-12d3-a456-426614174001"
+                email:
+                  type: string
+                  format: email
+                  description: User's email address (must be unique per merchant)
+                  example: "newuser@test-shop.com"
+                password:
+                  type: string
+                  format: password
+                  description: User's password (optional for OAuth-only users)
+                  example: "Password123!"
+                display_name:
+                  type: string
+                  description: Display name for the user
+                  example: "John Doe"
+                shopify_user_id:
+                  type: integer
+                  format: int64
+                  description: Optional Shopify user ID for OAuth integration
+                  example: 123456789
+                is_active:
+                  type: boolean
+                  description: Whether the user account is active (defaults to true)
+                  default: true
+      responses:
+        '201':
+          description: User created successfully (always as viewer role)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request - Invalid email, weak password, or duplicate email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user details
+      description: Retrieve details for a specific user
+      operationId: getUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the user
+          schema:
+            type: string
+            format: uuid
+          example: "a1111111-e89b-12d3-a456-426614174001"
+      responses:
+        '200':
+          description: User details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: |
+        Update user information (display name and password only).
+        
+        **Security Note:**
+        - Can only update display_name and password
+        - Role changes NOT allowed via API
+        - Account deactivation NOT allowed via API
+        - Use SQL scripts for role changes and deactivation
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the user
+          schema:
+            type: string
+            format: uuid
+          example: "a1111111-e89b-12d3-a456-426614174001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  description: New display name
+                  example: "John Smith"
+                password:
+                  type: string
+                  format: password
+                  description: New password (will be validated for strength)
+                  example: "NewPassword123!"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Bad request - Invalid password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Users
+      summary: Deactivate user
+      description: |
+        Soft delete a user by setting is_active to false.
+        
+        **Note:**
+        - This is a soft delete (sets is_active = false)
+        - Preserves audit trail
+        - User cannot login but data remains
+        - Reactivation requires SQL script
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the user
+          schema:
+            type: string
+            format: uuid
+          example: "a1111111-e89b-12d3-a456-426614174001"
+      responses:
+        '204':
+          description: User deactivated successfully
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /products:
     get:
       tags:
@@ -636,7 +1082,88 @@ paths:
                 $ref: '#/components/schemas/Error'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token obtained from the `/login` endpoint.
+        
+        **Usage:**
+        1. Login with email/password to get tokens
+        2. Use access token in Authorization header: `Bearer <token>`
+        3. Token expires in 15 minutes
+        4. Use refresh token to get new access token (when implemented)
+
   schemas:
+    UserResponse:
+      type: object
+      required:
+        - id
+        - merchant_id
+        - email
+        - role
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the user
+          example: "a1111111-e89b-12d3-a456-426614174001"
+        merchant_id:
+          type: string
+          format: uuid
+          description: UUID of the merchant this user belongs to
+          example: "123e4567-e89b-12d3-a456-426614174001"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@test-shop.com"
+        display_name:
+          type: string
+          nullable: true
+          description: User's display name
+          example: "John Doe"
+        role:
+          type: string
+          enum: [admin, manager, viewer]
+          description: |
+            User role (API creates only viewer, other roles via SQL):
+            - viewer: Read-only access
+            - manager: Can edit products/orders
+            - admin: Full control
+          example: "viewer"
+        shopify_user_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: Shopify user ID (for OAuth integration)
+          example: 123456789
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last successful login
+          example: "2024-01-20T10:30:00Z"
+        is_active:
+          type: boolean
+          description: Whether the user account is active (can login)
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user was created
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user was last updated
+          example: "2024-01-20T14:45:00Z"
+
     Product:
       type: object
       required:
