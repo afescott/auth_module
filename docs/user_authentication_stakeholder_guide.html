@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Authentication Table - Stakeholder Guide</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            @page { margin: 1cm; }
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #2980b9;
+            font-size: 20px;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+        }
+        
+        h3 {
+            color: #34495e;
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .intro {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 13px;
+            page-break-inside: avoid;
+        }
+        
+        th {
+            background: #3498db;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .field-name {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #c0392b;
+        }
+        
+        .scenario {
+            background: #e8f5e9;
+            padding: 12px;
+            margin: 10px 0;
+            border-left: 4px solid #4caf50;
+            page-break-inside: avoid;
+        }
+        
+        .scenario h4 {
+            margin: 0 0 8px 0;
+            color: #2e7d32;
+            font-size: 14px;
+        }
+        
+        .code {
+            background: #f5f5f5;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        
+        .checkmark {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .security-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+        
+        .security-box h3 {
+            color: #f57c00;
+            margin-top: 0;
+        }
+        
+        ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        li {
+            margin: 5px 0;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #ecf0f1;
+            text-align: center;
+            color: #95a5a6;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Authentication Table</h1>
+    <div class="subtitle">Stakeholder Technical Guide</div>
+    
+    <div class="intro">
+        <strong>What This Does:</strong> This table stores <strong>who can log into your Shopify dashboard</strong> and <strong>what they're allowed to do</strong>. Think of it as your employee/user directory with access control.
+    </div>
+
+    <h2>Core Identity Fields</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 20%;">Field</th>
+                <th style="width: 35%;">What It Does</th>
+                <th style="width: 45%;">Business Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="field-name">id</td>
+                <td>Unique identifier for each user</td>
+                <td>Like an employee ID - ensures we never mix up two users</td>
+            </tr>
+            <tr>
+                <td class="field-name">merchant_id</td>
+                <td>Links user to a specific Shopify store</td>
+                <td><strong>Multi-tenancy:</strong> Keeps Store A's users separate from Store B's users. Critical for data privacy.</td>
+            </tr>
+            <tr>
+                <td class="field-name">email</td>
+                <td>User's login email</td>
+                <td>How users log in. Also used for password resets, notifications.</td>
+            </tr>
+            <tr>
+                <td class="field-name">display_name</td>
+                <td>Name shown in the app</td>
+                <td>"John Smith" instead of "john.smith@company.com" - better UX</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Authentication Fields</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 20%;">Field</th>
+                <th style="width: 35%;">What It Does</th>
+                <th style="width: 45%;">Why It Matters</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="field-name">password_hash</td>
+                <td>Encrypted password (NOT plain text)</td>
+                <td><strong>Security:</strong> We never store actual passwords. If database is breached, passwords are safe.</td>
+            </tr>
+            <tr>
+                <td class="field-name">shopify_user_id</td>
+                <td>Shopify's ID for this user (if they logged in via Shopify)</td>
+                <td><strong>Flexibility:</strong> Users can log in through Shopify OR with email/password. Some users might only use Shopify login.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Access Control</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 20%;">Field</th>
+                <th style="width: 35%;">What It Does</th>
+                <th style="width: 45%;">Business Impact</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="field-name">role</td>
+                <td>Permission level: viewer, manager, or admin</td>
+                <td>
+                    <strong>Security & Compliance:</strong>
+                    <ul>
+                        <li><strong>Viewer</strong> = Can only look, no changes</li>
+                        <li><strong>Manager</strong> = Can edit products/orders</li>
+                        <li><strong>Admin</strong> = Full control, can add/remove users</li>
+                    </ul>
+                    Prevents junior staff from accidentally deleting critical data.
+                </td>
+            </tr>
+            <tr>
+                <td class="field-name">is_active</td>
+                <td>Whether user can log in</td>
+                <td><strong>Offboarding:</strong> When employee leaves, set to false instead of deleting. Preserves audit trail ("who made this change?")</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Operational Fields</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 20%;">Field</th>
+                <th style="width: 35%;">What It Does</th>
+                <th style="width: 45%;">Business Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="field-name">last_login_at</td>
+                <td>When user last logged in</td>
+                <td>
+                    <ul>
+                        <li><strong>Security monitoring:</strong> Flag accounts that haven't logged in for 90+ days</li>
+                        <li><strong>License optimization:</strong> "Are we paying for users who don't use the system?"</li>
+                        <li><strong>Audit compliance:</strong> "Who had access when?"</li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td class="field-name">created_at</td>
+                <td>When user account was created</td>
+                <td>Audit trail for compliance</td>
+            </tr>
+            <tr>
+                <td class="field-name">updated_at</td>
+                <td>When account was last modified</td>
+                <td>Track when permissions changed</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Data Integrity Rules</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30%;">Rule</th>
+                <th style="width: 30%;">What It Means</th>
+                <th style="width: 40%;">Why It's Important</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="field-name">UNIQUE(merchant_id, email)</td>
+                <td>Same email can't be used twice within one store</td>
+                <td>Prevents confusion. But john@company.com can exist for Store A AND Store B (different businesses).</td>
+            </tr>
+            <tr>
+                <td class="field-name">ON DELETE CASCADE</td>
+                <td>If merchant deleted, all their users are deleted</td>
+                <td><strong>Data cleanup:</strong> When a store uninstalls your app, automatically remove all their users. No orphaned data.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Real-World Scenarios</h2>
+    
+    <div class="scenario">
+        <h4>Scenario 1: Employee Leaves</h4>
+        <div class="code">UPDATE users SET is_active = false WHERE email = 'jane@store.com';</div>
+        <span class="checkmark">✓</span> Jane can't log in anymore<br>
+        <span class="checkmark">✓</span> Her historical changes still show "Modified by Jane"<br>
+        <span class="checkmark">✓</span> No data loss
+    </div>
+
+    <div class="scenario">
+        <h4>Scenario 2: Promoting Someone</h4>
+        <div class="code">UPDATE users SET role = 'admin' WHERE email = 'john@store.com';</div>
+        <span class="checkmark">✓</span> John now has full access<br>
+        <span class="checkmark">✓</span> Change is logged with timestamp<br>
+        <span class="checkmark">✓</span> Can demote later if needed
+    </div>
+
+    <div class="scenario">
+        <h4>Scenario 3: Store Uninstalls Your App</h4>
+        <div class="code">DELETE FROM merchants WHERE id = 'store-123';</div>
+        <span class="checkmark">✓</span> All users automatically deleted (CASCADE)<br>
+        <span class="checkmark">✓</span> No manual cleanup needed<br>
+        <span class="checkmark">✓</span> GDPR compliance - no retained personal data
+    </div>
+
+    <div class="security-box">
+        <h3>🔒 Security Highlights</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Security Feature</th>
+                    <th style="width: 60%;">Business Protection</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Password hashing</td>
+                    <td>Even if database stolen, passwords are unreadable</td>
+                </tr>
+                <tr>
+                    <td>Role-based access</td>
+                    <td>Limits damage from compromised accounts</td>
+                </tr>
+                <tr>
+                    <td>is_active flag</td>
+                    <td>Instant revocation without deleting audit trail</td>
+                </tr>
+                <tr>
+                    <td>Multi-tenancy (merchant_id)</td>
+                    <td>Store A can NEVER see Store B's data</td>
+                </tr>
+                <tr>
+                    <td>Email uniqueness</td>
+                    <td>Prevents account hijacking within a store</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Questions This Enables You to Answer</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50%;">Business Question</th>
+                <th style="width: 50%;">Answer Enabled</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>"How many users does each merchant have?"</td>
+                <td>Helps with pricing tiers (charge per user)</td>
+            </tr>
+            <tr>
+                <td>"Which accounts haven't logged in for 6 months?"</td>
+                <td>License optimization, security hygiene</td>
+            </tr>
+            <tr>
+                <td>"Who made this change to the order?"</td>
+                <td>Audit trail, accountability</td>
+            </tr>
+            <tr>
+                <td>"Can we have read-only users?"</td>
+                <td>Yes, that's the "viewer" role</td>
+            </tr>
+            <tr>
+                <td>"What if a user works for multiple stores?"</td>
+                <td>They need separate accounts (email + merchant combo is unique)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="security-box" style="background: #e3f2fd; border-color: #2196f3;">
+        <h3 style="color: #1565c0;">📌 Bottom Line</h3>
+        <p style="margin: 10px 0;"><strong>This table is your access control foundation. It ensures:</strong></p>
+        <ul style="margin: 5px 0;">
+            <li><span class="checkmark">✓</span> Right people have right access</li>
+            <li><span class="checkmark">✓</span> Security is baked in (hashed passwords, roles)</li>
+            <li><span class="checkmark">✓</span> Audit trail for compliance</li>
+            <li><span class="checkmark">✓</span> Clean data separation between merchants</li>
+            <li><span class="checkmark">✓</span> Flexible login options (email/password OR Shopify OAuth)</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        Shopify Margin Cost Dashboard - User Authentication Technical Guide<br>
+        Generated: October 2025
+    </div>
+</body>
+</html>
+

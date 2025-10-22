@@ -19,3 +19,4 @@ RETURNING id, shop_domain, shop_name, shop_currency;
 \echo ''
 \echo 'You can now use this merchant_id in your API calls!'
 
+

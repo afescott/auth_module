@@ -73,6 +73,7 @@ fn api_router() -> Router {
         .nest(
             "/api/v1",
             Router::new()
+                .merge(auth::auth_router())
                 .merge(inventory::inventory_router())
                 .merge(orders::orders_router())
                 .merge(products::products_router()),

@@ -11,9 +11,9 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Scope {
-    Admin,
-    User,
-    Backoffice,
+    Viewer,   // Can only look, no changes
+    Manager,  // Can edit products/orders
+    Admin,    // Full control, can add/remove users
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

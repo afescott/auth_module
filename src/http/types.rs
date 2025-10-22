@@ -17,6 +17,10 @@ pub enum AppError {
     NotFound,
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+    #[error("Internal server error")]
+    InternalServerError,
     #[error("Internal server error: {0}")]
     Internal(String),
 }
@@ -36,6 +40,8 @@ impl IntoResponse for AppError {
             AppError::Validation(ref msg) => (StatusCode::BAD_REQUEST, "Validation error", msg.clone()),
             AppError::NotFound => (StatusCode::NOT_FOUND, "Resource not found", "Resource not found".to_string()),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized", "Unauthorized".to_string()),
+            AppError::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid credentials", "Invalid email or password".to_string()),
+            AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error", "Internal server error".to_string()),
             AppError::Internal(ref msg) => {
                 eprintln!("Internal error: {}", msg);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error", msg.clone())
@@ -216,4 +222,62 @@ pub struct InventoryItemListResponse {
     pub total: i64,
     pub limit: i32,
     pub offset: i32,
+}
+
+// Authentication Types
+#[derive(Deserialize)]
+pub struct LoginRequest {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Serialize)]
+pub struct LoginResponseData {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub user: UserInfo,
+}
+
+#[derive(Serialize)]
+pub struct UserInfo {
+    pub id: Uuid,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub role: String,
+}
+
+#[derive(sqlx::FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub merchant_id: Uuid,
+    pub email: String,
+    pub password_hash: Option<String>,
+    pub display_name: Option<String>,
+    pub role: String,
+    pub is_active: bool,
+}
+
+#[derive(Serialize)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    pub message: Option<String>,
+    pub data: Option<T>,
+}
+
+impl<T> ApiResponse<T> {
+    pub fn success(data: T) -> Self {
+        Self {
+            success: true,
+            message: None,
+            data: Some(data),
+        }
+    }
+
+    pub fn success_with_message(data: T, message: String) -> Self {
+        Self {
+            success: true,
+            message: Some(message),
+            data: Some(data),
+        }
+    }
 }
