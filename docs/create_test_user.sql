@@ -111,8 +111,6 @@ SET
 \echo '   Status: INACTIVE (login will fail)'
 \echo ''
 \echo '🧪 Test Login:'
-\echo '   curl -X POST http://localhost:8080/api/v1/login \'
-\echo '     -H "Content-Type: application/json" \'
-\echo '     -d '"'"'{"email":"admin@test-shop.com","password":"admin123"}'"'"
+\echo '   Use the curl command from the README to test login'
 \echo ''
 
