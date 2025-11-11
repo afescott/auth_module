@@ -7,6 +7,7 @@ mod args;
 mod auth;
 mod http;
 pub mod misc;
+pub mod shopify;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
