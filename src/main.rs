@@ -35,3 +35,56 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::shopify::ShopifyClient;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn fetch_shopify_data_plaintext() -> anyhow::Result<()> {
+        let access_token = match std::env::var("SHOPIFY_ACCESS_TOKEN") {
+            Ok(token) if !token.trim().is_empty() => token,
+            _ => {
+                println!("Skipping fetch_shopify_data_plaintext: SHOPIFY_ACCESS_TOKEN not set");
+                return Ok(());
+            }
+        };
+
+        let store_name = "store-analytic-app".to_string();
+        let api_version = "2025-10".to_string();
+        let client = ShopifyClient::new(store_name, access_token, api_version);
+
+        let products = client
+            .get_products(Some(5), None)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+        println!("=== Shopify Products (first 5) ===");
+        for product in &products {
+            println!(
+                "- {} (id: {}) | status: {:?} | variants: {}",
+                product.title,
+                product.id,
+                product.status,
+                product.variants.len()
+            );
+        }
+
+        let orders = client
+            .get_orders(Some(5), None, Some("any"), None)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+        println!("=== Shopify Orders (first 5) ===");
+        for order in &orders {
+            println!(
+                "- {} (id: {}) | status: {:?} | total_price: {} | items: {}",
+                order.name,
+                order.id,
+                order.financial_status,
+                order.total_price,
+                order.line_items.len()
+            );
+        }
+
+        Ok(())
+    }
+}
